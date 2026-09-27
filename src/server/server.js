@@ -15,13 +15,8 @@ app.use(express.json());
 // ===============================
 // MYSQL CONNECTION
 // ===============================
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+// Railway MYSQL_PUBLIC_URL is used here
+const db = mysql.createConnection(process.env.MYSQL_PUBLIC_URL);
 
 // ===============================
 // CONNECT TO MYSQL
@@ -33,7 +28,7 @@ db.connect((err) => {
     console.error('----------------------------------------');
     console.error(err.message);
     console.error('----------------------------------------');
-    console.error('⚠️ Check MySQL host, port, username, password and database name.');
+    console.error('⚠️ Check MYSQL_PUBLIC_URL in Render Environment.');
     console.error('');
     return;
   }
@@ -41,9 +36,7 @@ db.connect((err) => {
   console.log('');
   console.log('========================================');
   console.log('✅ Connected to MySQL Database');
-  console.log(`📦 Database: ${process.env.DB_NAME}`);
-  console.log(`🌐 Host: ${process.env.DB_HOST}`);
-  console.log(`🔌 Port: ${process.env.DB_PORT}`);
+  console.log('🌐 Railway MySQL connection successful');
   console.log('========================================');
   console.log('');
 });
@@ -82,31 +75,31 @@ app.post('/api/signup', (req, res) => {
   `;
 
   db.query(
-      query,
-      [cleanName, cleanEmail, password, cleanPhone],
-      (err, result) => {
-        if (err) {
-          console.error('❌ Signup error:', err);
+    query,
+    [cleanName, cleanEmail, password, cleanPhone],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Signup error:', err);
 
-          if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({
-              success: false,
-              message: 'This email is already registered. Please login.',
-            });
-          }
-
-          return res.status(500).json({
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({
             success: false,
-            message: 'Database error while creating account.',
+            message: 'This email is already registered. Please login.',
           });
         }
 
-        return res.status(201).json({
-          success: true,
-          message: 'Account created successfully!',
-          userId: result.insertId,
+        return res.status(500).json({
+          success: false,
+          message: 'Database error while creating account.',
         });
       }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Account created successfully!',
+        userId: result.insertId,
+      });
+    },
   );
 });
 
@@ -161,14 +154,8 @@ app.post('/api/login', (req, res) => {
 // ADVANCE BOOKING API
 // ===============================
 app.post('/api/bookings', (req, res) => {
-  const {
-    fullName,
-    phone,
-    serviceType,
-    travelDate,
-    pickupLocation,
-    notes,
-  } = req.body;
+  const { fullName, phone, serviceType, travelDate, pickupLocation, notes } =
+    req.body;
 
   if (!fullName || !phone || !serviceType || !travelDate || !pickupLocation) {
     return res.status(400).json({
@@ -191,31 +178,31 @@ app.post('/api/bookings', (req, res) => {
   `;
 
   db.query(
-      query,
-      [
-        fullName.trim(),
-        phone.trim(),
-        serviceType,
-        travelDate,
-        pickupLocation.trim(),
-        notes ? notes.trim() : null,
-      ],
-      (err, result) => {
-        if (err) {
-          console.error('❌ Booking error:', err);
+    query,
+    [
+      fullName.trim(),
+      phone.trim(),
+      serviceType,
+      travelDate,
+      pickupLocation.trim(),
+      notes ? notes.trim() : null,
+    ],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Booking error:', err);
 
-          return res.status(500).json({
-            success: false,
-            message: 'Database error while saving booking.',
-          });
-        }
-
-        return res.status(201).json({
-          success: true,
-          message: 'Booking saved successfully!',
-          bookingId: result.insertId,
+        return res.status(500).json({
+          success: false,
+          message: 'Database error while saving booking.',
         });
       }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Booking saved successfully!',
+        bookingId: result.insertId,
+      });
+    },
   );
 });
 
