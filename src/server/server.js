@@ -6,44 +6,19 @@ const cors = require('cors');
 
 const app = express();
 
-// ===============================
-// MIDDLEWARE
-// ===============================
 app.use(cors());
 app.use(express.json());
 
-// ===============================
-// MYSQL CONNECTION
-// ===============================
-// Railway MYSQL_PUBLIC_URL is used here
 const db = mysql.createConnection(process.env.MYSQL_PUBLIC_URL);
 
-// ===============================
-// CONNECT TO MYSQL
-// ===============================
 db.connect((err) => {
   if (err) {
-    console.error('');
-    console.error('❌ MYSQL DATABASE CONNECTION FAILED');
-    console.error('----------------------------------------');
-    console.error(err.message);
-    console.error('----------------------------------------');
-    console.error('⚠️ Check MYSQL_PUBLIC_URL in Render Environment.');
-    console.error('');
+    console.error('MYSQL DATABASE CONNECTION FAILED:', err.message);
     return;
   }
-
-  console.log('');
-  console.log('========================================');
-  console.log('✅ Connected to MySQL Database');
-  console.log('🌐 Railway MySQL connection successful');
-  console.log('========================================');
-  console.log('');
+  console.log('Connected to Railway MySQL');
 });
 
-// ===============================
-// TEST API
-// ===============================
 app.get('/api/test', (req, res) => {
   res.json({
     success: true,
@@ -51,9 +26,6 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// ===============================
-// SIGNUP API
-// ===============================
 app.post('/api/signup', (req, res) => {
   const { name, email, password, phone } = req.body;
 
@@ -64,22 +36,22 @@ app.post('/api/signup', (req, res) => {
     });
   }
 
-  const cleanName = name.trim();
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanPhone = phone ? phone.trim() : null;
-
   const query = `
-    INSERT INTO app_users
-      (name, email, password, phone)
+    INSERT INTO app_users (name, email, password, phone)
     VALUES (?, ?, ?, ?)
   `;
 
   db.query(
     query,
-    [cleanName, cleanEmail, password, cleanPhone],
+    [
+      name.trim(),
+      email.trim().toLowerCase(),
+      password,
+      phone ? phone.trim() : null,
+    ],
     (err, result) => {
       if (err) {
-        console.error('❌ Signup error:', err);
+        console.error('Signup error:', err);
 
         if (err.code === 'ER_DUP_ENTRY') {
           return res.status(400).json({
@@ -103,9 +75,6 @@ app.post('/api/signup', (req, res) => {
   );
 });
 
-// ===============================
-// LOGIN API
-// ===============================
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -116,19 +85,16 @@ app.post('/api/login', (req, res) => {
     });
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-
   const query = `
     SELECT id, name, email, phone
     FROM app_users
     WHERE email = ? AND password = ?
-      LIMIT 1
+    LIMIT 1
   `;
 
-  db.query(query, [cleanEmail, password], (err, results) => {
+  db.query(query, [email.trim().toLowerCase(), password], (err, results) => {
     if (err) {
-      console.error('❌ Login error:', err);
-
+      console.error('Login error:', err);
       return res.status(500).json({
         success: false,
         message: 'Database error while logging in.',
@@ -150,12 +116,16 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// ===============================
-// ADVANCE BOOKING API
-// ===============================
 app.post('/api/bookings', (req, res) => {
-  const { fullName, phone, serviceType, travelDate, pickupLocation, notes } =
-    req.body;
+  const {
+    userId,
+    fullName,
+    phone,
+    serviceType,
+    travelDate,
+    pickupLocation,
+    notes,
+  } = req.body;
 
   if (!fullName || !phone || !serviceType || !travelDate || !pickupLocation) {
     return res.status(400).json({
@@ -167,19 +137,22 @@ app.post('/api/bookings', (req, res) => {
   const query = `
     INSERT INTO bookings
     (
+      user_id,
       full_name,
       phone,
       service_type,
       travel_date,
       pickup_location,
-      notes
+      notes,
+      status
     )
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')
   `;
 
   db.query(
     query,
     [
+      userId || null,
       fullName.trim(),
       phone.trim(),
       serviceType,
@@ -189,7 +162,7 @@ app.post('/api/bookings', (req, res) => {
     ],
     (err, result) => {
       if (err) {
-        console.error('❌ Booking error:', err);
+        console.error('Booking error:', err);
 
         return res.status(500).json({
           success: false,
@@ -206,18 +179,116 @@ app.post('/api/bookings', (req, res) => {
   );
 });
 
-// ===============================
-// SERVER
-// ===============================
+app.get('/api/bookings/user/:userId', (req, res) => {
+  const userId = Number(req.params.userId);
+
+  if (!Number.isInteger(userId)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid user ID.',
+    });
+  }
+
+  const query = `
+    SELECT
+      id,
+      full_name,
+      phone,
+      service_type,
+      travel_date,
+      pickup_location,
+      notes,
+      status,
+      created_at
+    FROM bookings
+    WHERE user_id = ?
+    ORDER BY id DESC
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('Booking history error:', err);
+
+      return res.status(500).json({
+        success: false,
+        message: 'Database error while loading bookings.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      bookings: results,
+    });
+  });
+});
+
+/*
+  Admin endpoints are included for the next dashboard phase.
+  IMPORTANT: Add real admin authentication/JWT protection before
+  exposing these endpoints publicly.
+*/
+app.get('/api/admin/bookings', (req, res) => {
+  const query = `
+    SELECT b.*, u.email AS user_email
+    FROM bookings b
+    LEFT JOIN app_users u ON b.user_id = u.id
+    ORDER BY b.id DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database error while loading admin bookings.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      bookings: results,
+    });
+  });
+});
+
+app.patch('/api/admin/bookings/:id/status', (req, res) => {
+  const allowedStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
+  const { status } = req.body;
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid booking status.',
+    });
+  }
+
+  db.query(
+    `UPDATE bookings SET status = ? WHERE id = ?`,
+    [status, req.params.id],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: 'Database error while updating status.',
+        });
+      }
+
+      if (!result.affectedRows) {
+        return res.status(404).json({
+          success: false,
+          message: 'Booking not found.',
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Booking status updated.',
+      });
+    },
+  );
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('');
-  console.log('========================================');
-  console.log('🚩 Shri Mathura Tour & Travels Backend');
-  console.log('========================================');
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🔗 Local: http://localhost:${PORT}/api/test`);
-  console.log('========================================');
-  console.log('');
+  console.log(`Shri Mathura backend running on port ${PORT}`);
 });
