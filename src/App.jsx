@@ -1,833 +1,856 @@
-
 import { useState } from 'react';
 import './App.css';
 import poster from './assets/tour-poster.png';
+const API_BASE_URL = `http://${window.location.hostname}:5000`;
+
+const destinations = [
+  [
+    '🛕',
+    'Shri Krishna Janmabhoomi',
+    'Experience the sacred birthplace of Lord Krishna.',
+  ],
+  [
+    '🙏',
+    'Banke Bihari Mandir',
+    'Seek divine blessings in the heart of Vrindavan.',
+  ],
+  ['✨', 'Prem Mandir', 'Witness beautiful lights and divine architecture.'],
+  [
+    '🌸',
+    'ISKCON Temple',
+    'Feel the peaceful spiritual atmosphere of Vrindavan.',
+  ],
+  ['🐄', 'Gokul', 'Explore the beautiful childhood memories of Krishna.'],
+  ['⛰️', 'Govardhan', 'Visit the sacred Govardhan Parvat and surroundings.'],
+  ['🌺', 'Barsana', 'Discover the divine land of Radha Rani.'],
+];
+
+const rentals = [
+  {
+    icon: '🚗',
+    label: 'WITH DRIVER',
+    title: 'Car Rental',
+    text: 'Comfortable cars with experienced drivers for local sightseeing, airport transfers, and outstation family trips.',
+    points: [
+      'Local & Outstation',
+      'Airport Transfer',
+      'Family Trips',
+      'All India Travel',
+    ],
+  },
+  {
+    icon: '🚘',
+    label: 'SELF DRIVE',
+    title: 'Self Drive Car',
+    text: 'Enjoy the freedom of driving your own rental car for city trips, road trips, and weekend getaways.',
+    points: [
+      'Flexible Travel',
+      'City & Outstation',
+      'Weekend Trips',
+      'Long Distance',
+    ],
+    featured: true,
+  },
+  {
+    icon: '🏍️',
+    label: 'BIKE RENTAL',
+    title: 'Bike Rental',
+    text: 'Affordable bikes for local sightseeing, daily travel, and exploring Mathura–Vrindavan freely.',
+    points: [
+      'Daily Rental',
+      'Local Sightseeing',
+      'Short Trips',
+      'Easy Booking',
+    ],
+  },
+];
+
+const features = [
+  [
+    '🏨',
+    'Hotel Stay',
+    'Handpicked comfortable accommodation during your journey.',
+  ],
+  [
+    '🚌',
+    'Safe Travel',
+    'Clean, well-maintained vehicles with expert local drivers.',
+  ],
+  [
+    '🍽️',
+    'Delicious Meals',
+    'Enjoy hygienic, pure vegetarian local food options.',
+  ],
+  [
+    '📸',
+    'Guided Sightseeing',
+    'Explore famous temples and spiritual landmarks smoothly.',
+  ],
+];
 
 function App() {
-  const [showAccount, setShowAccount] = useState(false);
-  const [accountLoading, setAccountLoading] = useState(false);
-  const [accountMessage, setAccountMessage] = useState('');
-
-  const [account, setAccount] = useState({
-    fullName: '',
-    mobileNumber: '',
+  // Authentication States
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authForm, setAuthForm] = useState({
+    name: '',
+    email: '',
     password: '',
-    age: '',
-    gender: '',
-    maritalStatus: 'Unmarried',
-    spouseName: '',
-    marriageDate: '',
-    city: '',
+    phone: '',
   });
 
-  const handleAccountChange = (e) => {
+  const [currentPage, setCurrentPage] = useState('home');
+  const [mobileMenu, setMobileMenu] = useState(false);
+
+  // Advance Booking Form State
+  const [bookingForm, setBookingForm] = useState({
+    fullName: '',
+    phone: '',
+    serviceType: 'Tour Package (3 Days)',
+    travelDate: '',
+    pickupLocation: '',
+    notes: '',
+  });
+  const [bookingSubmitted, setBookingSubmitted] = useState(false);
+
+  const handleAuthChange = (e) => {
     const { name, value } = e.target;
-    setAccount((prev) => ({ ...prev, [name]: value }));
+    setAuthForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateAccount = async (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    setAccountMessage('');
-
-    if (Number(account.age) < 18) {
-      setAccountMessage('Account creation is available for users aged 18 or above.');
-      return;
-    }
-
-    if (account.maritalStatus === 'Married' &&
-        (!account.spouseName.trim() || !account.marriageDate)) {
-      setAccountMessage('Please enter spouse name and marriage date.');
-      return;
-    }
-
-    setAccountLoading(true);
-
+    const endpoint =
+      authMode === 'login'
+        ? `${API_BASE_URL}/api/login`
+        : `${API_BASE_URL}/api/signup`;
     try {
-      const response = await fetch('https://your-backend-url.onrender.com/api/auth/register',  {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(account),
+        body: JSON.stringify(authForm),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Unable to create account.');
+      const data = await res.json();
+      if (data.success) {
+        if (authMode === 'login') {
+          setIsLoggedIn(true);
+          setCurrentUser(data.user);
+        } else {
+          alert('Signup successful! Please login now.');
+          setAuthMode('login');
+        }
+      } else {
+        alert(data.message || 'Authentication failed!');
       }
-
-      setAccountMessage('Account created successfully! 🙏');
-      setAccount({
-        fullName: '',
-        mobileNumber: '',
-        password: '',
-        age: '',
-        gender: '',
-        maritalStatus: 'Unmarried',
-        spouseName: '',
-        marriageDate: '',
-        city: '',
-      });
-    } catch (error) {
-      setAccountMessage(error.message || 'Something went wrong.');
-    } finally {
-      setAccountLoading(false);
+    } catch (err) {
+      console.error(err);
+      alert('Server connection error. Make sure backend is running.');
     }
   };
 
-  const destinations = [
-    {
-      icon: '🛕',
-      name: 'Shri Krishna Janmabhoomi',
-      text: 'Experience the sacred birthplace of Lord Krishna.',
-    },
-    {
-      icon: '🙏',
-      name: 'Banke Bihari Mandir',
-      text: 'Seek divine blessings in the heart of Vrindavan.',
-    },
-    {
-      icon: '✨',
-      name: 'Prem Mandir',
-      text: 'Witness beautiful lights and divine architecture.',
-    },
-    {
-      icon: '🌸',
-      name: 'ISKCON Temple',
-      text: 'Feel the peaceful spiritual atmosphere of Vrindavan.',
-    },
-    {
-      icon: '🐄',
-      name: 'Gokul',
-      text: 'Explore the beautiful childhood memories of Krishna.',
-    },
-    {
-      icon: '⛰️',
-      name: 'Govardhan',
-      text: 'Visit the sacred Govardhan Parvat and surroundings.',
-    },
-    {
-      icon: '🌺',
-      name: 'Barsana',
-      text: 'Discover the divine land of Radha Rani.',
-    },
-  ];
+  const handleBookingChange = (e) => {
+    const { name, value } = e.target;
+    setBookingForm((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const features = [
-    {
-      icon: '🏨',
-      title: 'Hotel Stay',
-      text: 'Comfortable accommodation during your journey.',
-    },
-    {
-      icon: '🚌',
-      title: 'Comfortable Travel',
-      text: 'Safe and convenient transportation for your trip.',
-    },
-    {
-      icon: '🍽️',
-      title: 'Delicious Meals',
-      text: 'Enjoy tasty meals during your tour package.',
-    },
-    {
-      icon: '📸',
-      title: 'Sightseeing',
-      text: 'Explore famous temples and spiritual destinations.',
-    },
-  ];
+  const handleBookingSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingForm),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBookingSubmitted(true);
+      } else {
+        alert('Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Server error! Make sure backend is running.');
+    }
+  };
 
-  const rentals = [
-    {
-      icon: '🚗',
-      label: 'WITH DRIVER',
-      title: 'Car Rental',
-      text: 'Comfortable cars with experienced drivers for local sightseeing, airport transfers, outstation trips and family travel.',
-      points: [
-        'Local & Outstation',
-        'Airport Transfer',
-        'Family Trips',
-        'All India Travel',
-      ],
-      message: 'Hello, I want to enquire about Car Rental with Driver.',
-    },
-    {
-      icon: '🚘',
-      label: 'SELF DRIVE',
-      title: 'Self Drive Car',
-      text: 'Enjoy the freedom of driving your own rental car for city trips, road trips, weekend travel and long-distance journeys.',
-      points: [
-        'Flexible Travel',
-        'City & Outstation',
-        'Weekend Trips',
-        'Long Distance Travel',
-      ],
-      message: 'Hello, I want to enquire about Self Drive Car Rental.',
-      featured: true,
-    },
-    {
-      icon: '🏍️',
-      label: 'BIKE RENTAL',
-      title: 'Bike Rental',
-      text: 'Affordable bikes for local sightseeing, daily travel, short trips and exploring Mathura–Vrindavan.',
-      points: [
-        'Daily Rental',
-        'Local Sightseeing',
-        'Short Trips',
-        'Easy Booking',
-      ],
-      message: 'Hello, I want to enquire about Bike Rental.',
-    },
-  ];
+  const navigateTo = (page) => {
+    setCurrentPage(page);
+    setMobileMenu(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
+  // Agar user logged in nahi hai, toh Login/Signup screen dikhao
+  if (!isLoggedIn) {
+    return (
+      <div className="auth-wrapper">
+        <div className="auth-card">
+          <div className="logo-circle" style={{ margin: '0 auto 15px' }}>
+            🛕
+          </div>
+          <h2>Shri Mathura Tour & Travels</h2>
+          <p className="auth-subtitle">
+            Radhe Radhe • Please {authMode === 'login' ? 'login' : 'sign up'} to
+            continue
+          </p>
+
+          <div className="auth-tabs" role="tablist" aria-label="Authentication">
+            <button
+              type="button"
+              className={authMode === 'login' ? 'auth-tab active' : 'auth-tab'}
+              onClick={() => { setAuthMode('login'); setAuthForm({ name: '', email: '', password: '', phone: '' }); }}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              className={authMode === 'signup' ? 'auth-tab active' : 'auth-tab'}
+              onClick={() => { setAuthMode('signup'); setAuthForm({ name: '', email: '', password: '', phone: '' }); }}
+            >
+              Create Account
+            </button>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="auth-form">
+            {authMode === 'signup' && (
+              <label>
+                Full Name *
+                <input
+                  type="text"
+                  name="name"
+                  value={authForm.name}
+                  onChange={handleAuthChange}
+                  placeholder="Enter your name"
+                  required
+                />
+              </label>
+            )}
+            <label>
+              Email Address *
+              <input
+                type="email"
+                name="email"
+                value={authForm.email}
+                onChange={handleAuthChange}
+                placeholder="Enter email"
+                required
+              />
+            </label>
+            <label>
+              Password *
+              <input
+                type="password"
+                name="password"
+                value={authForm.password}
+                onChange={handleAuthChange}
+                placeholder="Enter password"
+                required
+              />
+            </label>
+            {authMode === 'signup' && (
+              <label>
+                Mobile Number
+                <input
+                  type="tel"
+                  name="phone"
+                  value={authForm.phone}
+                  onChange={handleAuthChange}
+                  placeholder="10-digit mobile number"
+                />
+              </label>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ width: '100%', marginTop: '10px' }}
+            >
+              {authMode === 'login' ? 'Login 🚀' : 'Create Account 🚀'}
+            </button>
+          </form>
+
+          <div className="auth-switch">
+            {authMode === 'login' ? (
+              <p>
+                Don&apos;t have an account?{' '}
+                <button onClick={() => { setAuthMode('signup'); setAuthForm({ name: '', email: '', password: '', phone: '' }); }}>Sign Up</button>
+              </p>
+            ) : (
+              <p>
+                Already have an account?{' '}
+                <button onClick={() => { setAuthMode('login'); setAuthForm({ name: '', email: '', password: '', phone: '' }); }}>Login</button>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Website After Login
   return (
     <div className="website">
-      {/* ================= TOP BAR ================= */}
-
+      {/* Top Bar */}
       <div className="topbar">
-        <div>🙏 Radhe Radhe • Chalo Braj Dham</div>
-
-        <div className="top-contact">📞 9119711375</div>
+        <div>
+          🙏 Radhe Radhe • Welcome, {currentUser ? currentUser.name : 'Devotee'}
+        </div>
+        <div className="topbar-right">
+          <span>📍 Mathura, U.P.</span>
+          <a href="tel:+919119711375">📞 +91 91197-11375</a>
+          <button onClick={() => setIsLoggedIn(false)} className="logout-btn">
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* ================= NAVBAR ================= */}
-
+      {/* Navigation */}
       <header className="navbar">
         <div className="nav-container">
-          <a href="#home" className="logo">
+          <button className="logo" onClick={() => navigateTo('home')}>
             <div className="logo-circle">🛕</div>
-
             <div className="logo-text">
-              <h2>Shri Mathura</h2>
+              <strong>Shri Mathura</strong>
               <span>Tour & Travels</span>
             </div>
-          </a>
-
-          <nav>
-            <a href="#home">Home</a>
-            <a href="#package">Tours</a>
-            <a href="#rental">Rentals</a>
-            <a href="#destinations">Places</a>
-            <a href="#about">Why Us</a>
-            <a href="#contact">Contact</a>
-          </nav>
-
-          <button
-            type="button"
-            className="nav-account"
-            onClick={() => {
-              setAccountMessage('');
-              setShowAccount(true);
-            }}
-          >
-            Create Account
           </button>
 
-          <a href="tel:+919119711375" className="nav-call">
-            📞 Call Now
-          </a>
+          <nav className={mobileMenu ? 'nav-links open' : 'nav-links'}>
+            <button
+              className={currentPage === 'home' ? 'active-link' : ''}
+              onClick={() => navigateTo('home')}
+            >
+              Home
+            </button>
+            <button
+              className={currentPage === 'tours' ? 'active-link' : ''}
+              onClick={() => navigateTo('tours')}
+            >
+              Tours
+            </button>
+            <button
+              className={currentPage === 'rentals' ? 'active-link' : ''}
+              onClick={() => navigateTo('rentals')}
+            >
+              Rentals
+            </button>
+            <button
+              className={currentPage === 'destinations' ? 'active-link' : ''}
+              onClick={() => navigateTo('destinations')}
+            >
+              Places
+            </button>
+            <button
+              className={
+                currentPage === 'booking'
+                  ? 'active-link booking-highlight'
+                  : 'booking-highlight'
+              }
+              onClick={() => navigateTo('booking')}
+            >
+              📅 Advance Booking
+            </button>
+            <button
+              className={currentPage === 'contact' ? 'active-link' : ''}
+              onClick={() => navigateTo('contact')}
+            >
+              Contact
+            </button>
+          </nav>
+
+          <div className="nav-actions">
+            <button className="nav-call" onClick={() => navigateTo('booking')}>
+              📅 Book Now
+            </button>
+            <button
+              className="menu-button"
+              aria-label="Open menu"
+              onClick={() => setMobileMenu((v) => !v)}
+            >
+              {mobileMenu ? '✕' : '☰'}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* ================= HERO ================= */}
-
-      <section className="hero" id="home">
-        <div className="hero-content">
-          <div className="hero-tag">✨ SPIRITUAL JOURNEY WITH DIVINE VIBES</div>
-
-          <h1>
-            Discover the
-            <span> Divine Beauty </span>
-            of Braj Dham
-          </h1>
-
-          <p className="hero-description">
-            Experience the sacred beauty of Mathura and Vrindavan with
-            comfortable travel, memorable tours, car rentals, self-drive cars
-            and bike rentals.
-          </p>
-
-          <div className="hero-price">
-            <div>
-              <small>3 DAYS TOUR PACKAGE</small>
-
-              <strong>₹5,000</strong>
-
-              <span>Per Person</span>
-            </div>
-
-            <div className="price-line"></div>
-
-            <div className="hero-mini">
-              <span>✓ Hotel Stay</span>
-              <span>✓ Meals</span>
-              <span>✓ Travel</span>
-              <span>✓ Sightseeing</span>
-            </div>
-          </div>
-
-          <div className="hero-buttons">
-            <a href="#package" className="primary-btn">
-              Explore Tour →
-            </a>
-
-            <a href="#rental" className="outline-btn">
-              🚗 Rent a Vehicle
-            </a>
-
-            <a
-              href="https://wa.me/919119711375"
-              target="_blank"
-              rel="noreferrer"
-              className="whatsapp-btn"
-            >
-              💬 WhatsApp
-            </a>
-          </div>
-
-          <div className="trust-row">
-            <span>✓ Family Friendly</span>
-            <span>✓ Group Tours</span>
-            <span>✓ Vehicle Rental</span>
-            <span>✓ All India Travel</span>
-          </div>
-        </div>
-
-        {/* HERO IMAGE */}
-
-        <div className="hero-image-wrapper">
-          <div className="hero-image">
-            <img src={poster} alt="Shri Mathura Tour and Travels" />
-          </div>
-
-          <div className="floating-card">
-            <div className="floating-icon">🙏</div>
-
-            <div>
-              <strong>Chalo Braj Dham</strong>
-
-              <small>Divine • Peaceful • Memorable</small>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= QUICK INFO ================= */}
-
-      <section className="quick-info">
-        <div className="quick-card">
-          <div>🛕</div>
-          <span>7+</span>
-          <p>Spiritual Places</p>
-        </div>
-
-        <div className="quick-card">
-          <div>🚗</div>
-          <span>Car</span>
-          <p>Rental Service</p>
-        </div>
-
-        <div className="quick-card">
-          <div>🏍️</div>
-          <span>Bike</span>
-          <p>Rental Service</p>
-        </div>
-
-        <div className="quick-card">
-          <div>🇮🇳</div>
-          <span>All India</span>
-          <p>Travel Service</p>
-        </div>
-      </section>
-
-      {/* ================= TOUR PACKAGE ================= */}
-
-      <section className="package-section" id="package">
-        <div className="section-heading">
-          <span>OUR FEATURED TOUR</span>
-
-          <h2>
-            3 Days Mathura – Vrindavan
-            <br />
-            <em>Spiritual Tour</em>
-          </h2>
-
-          <p>A beautiful journey through the sacred places of Braj Dham.</p>
-        </div>
-
-        <div className="package-container">
-          <div className="package-image">
-            <img src={poster} alt="Mathura Vrindavan Tour" />
-
-            <div className="image-badge">⭐ Special Package</div>
-          </div>
-
-          <div className="package-content">
-            <div className="package-label">3 DAYS • MATHURA – VRINDAVAN</div>
-
-            <h3>
-              Complete Braj Dham
-              <br />
-              <span>Experience</span>
-            </h3>
-
-            <p>
-              Explore Mathura, Vrindavan, Gokul, Govardhan and Barsana with
-              comfortable travel and spiritual sightseeing.
-            </p>
-
-            <div className="package-price">
-              <span>Starting from</span>
-
-              <strong>₹5,000</strong>
-
-              <small>Per Person</small>
-            </div>
-
-            <div className="included-list">
-              <div>✓ Hotel Stay</div>
-              <div>✓ Delicious Meals</div>
-              <div>✓ Comfortable Travel</div>
-              <div>✓ Temple Darshan</div>
-              <div>✓ Sightseeing</div>
-              <div>✓ Family & Group Friendly</div>
-            </div>
-
-            <a href="tel:+919119711375" className="book-btn">
-              📞 Book / Enquire Now
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= RENTAL SERVICES ================= */}
-
-      <section className="rental-section" id="rental">
-        <div className="section-heading">
-          <span>TRAVEL & RENTAL SERVICES</span>
-
-          <h2>
-            Rent. Ride.
-            <br />
-            <em>Explore India.</em>
-          </h2>
-
-          <p>
-            Choose from cars, self-drive vehicles and bikes for local travel,
-            outstation trips and journeys across India.
-          </p>
-        </div>
-
-        <div className="rental-grid">
-          {rentals.map((rental) => (
-            <div
-              className={`rental-card ${
-  rental.featured ? 'featured-rental' : ''
-}`}
-              key={rental.title}
-            >
-              {rental.featured && (
-                <div className="popular-badge">⭐ POPULAR</div>
-              )}
-
-              <div className="rental-icon">{rental.icon}</div>
-
-              <span className="rental-label">{rental.label}</span>
-
-              <h3>{rental.title}</h3>
-
-              <p>{rental.text}</p>
-
-              <ul>
-                {rental.points.map((point) => (
-                  <li key={point}>✓ {point}</li>
-                ))}
-              </ul>
-
-              <a
-                href={`https://wa.me/919119711375?text=${encodeURIComponent(
-  rental.message,
-)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="rental-btn"
-              >
-                Enquire on WhatsApp →
-              </a>
-            </div>
-          ))}
-        </div>
-
-        {/* ALL INDIA */}
-
-        <div className="all-india">
-          <div className="india-icon">🇮🇳</div>
-
-          <div className="india-content">
-            <span>TRAVEL ACROSS INDIA</span>
-
-            <h3>All India Tour & Travel Services</h3>
-
-            <p>
-              Local Trips • Outstation • Intercity Travel • Airport Transfers •
-              Road Trips • Vehicle Rental
-            </p>
-          </div>
-
-          <a href="tel:+919119711375" className="india-btn">
-            📞 Call Now
-          </a>
-        </div>
-      </section>
-
-      {/* ================= DESTINATIONS ================= */}
-
-      <section className="destinations-section" id="destinations">
-        <div className="section-heading">
-          <span>EXPLORE BRAJ DHAM</span>
-
-          <h2>
-            Sacred Places
-            <br />
-            <em>We Cover</em>
-          </h2>
-
-          <p>Visit the most loved spiritual destinations of Braj.</p>
-        </div>
-
-        <div className="destination-grid">
-          {destinations.map((place) => (
-            <div className="destination-card" key={place.name}>
-              <div className="destination-icon">{place.icon}</div>
-
-              <h3>{place.name}</h3>
-
-              <p>{place.text}</p>
-
-              <a href="#contact">Enquire →</a>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= WHY US ================= */}
-
-      <section className="why-section" id="about">
-        <div className="section-heading">
-          <span>WHY TRAVEL WITH US</span>
-
-          <h2>
-            Your Comfort,
-            <br />
-            <em>Our Responsibility</em>
-          </h2>
-
-          <p>
-            We aim to make your Braj Yatra and travel experience comfortable and
-            memorable.
-          </p>
-        </div>
-
-        <div className="features-grid">
-          {features.map((feature) => (
-            <div className="feature-card" key={feature.title}>
-              <div className="feature-icon">{feature.icon}</div>
-
-              <h3>{feature.title}</h3>
-
-              <p>{feature.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ================= SERVICES STRIP ================= */}
-
-      <section className="service-strip">
-        <div>
-          🚗
-          <span>Car Rental</span>
-        </div>
-
-        <div>
-          🚘
-          <span>Self Drive</span>
-        </div>
-
-        <div>
-          🏍️
-          <span>Bike Rental</span>
-        </div>
-
-        <div>
-          🚌
-          <span>Tour Packages</span>
-        </div>
-
-        <div>
-          🇮🇳
-          <span>All India Travel</span>
-        </div>
-      </section>
-
-      {/* ================= CTA ================= */}
-
-      <section className="cta-section">
-        <div className="cta-content">
-          <span>🙏 RADHE RADHE</span>
-
-          <h2>
-            Ready to Explore
-            <br />
-            <em>Braj Dham?</em>
-          </h2>
-
-          <p>Book a tour, rent a vehicle or plan your next journey with us.</p>
-
-          <div className="cta-buttons">
-            <a href="tel:+919119711375" className="cta-call">
-              📞 Call 9119711375
-            </a>
-
-            <a
-              href="https://wa.me/919119711375"
-              target="_blank"
-              rel="noreferrer"
-              className="cta-whatsapp"
-            >
-              💬 WhatsApp Us
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= CONTACT ================= */}
-
-      <section className="contact-section" id="contact">
-        <div className="contact-box">
-          <div>
-            <span>CONTACT US</span>
-
-            <h2>
-              Shri Mathura
-              <br />
-              Tour & Travels
-            </h2>
-
-            <p>Your Trust • Our Respect</p>
-          </div>
-
-          <div className="contact-details">
-            <a href="tel:+919119711375">
-              📞 <strong>9119711375</strong>
-            </a>
-
-            <p>
-              📍 57, Hanuman Nagar,
-              <br />
-              Dholi Pyau, Mathura (U.P.)
-            </p>
-
-            <p>📸 @shri_mathura_tour_travels</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ================= FOOTER ================= */}
-
-      <footer>
-        <div className="footer-logo">🛕 Shri Mathura Tour & Travels</div>
-
-        <p>Your Trust • Our Respect</p>
-
-        <div className="footer-links">
-          <a href="#home">Home</a>
-
-          <a href="#package">Tours</a>
-
-          <a href="#rental">Rentals</a>
-
-          <a href="#destinations">Destinations</a>
-
-          <a href="#contact">Contact</a>
-        </div>
-
-        <small>© 2026 Shri Mathura Tour & Travels • All Rights Reserved</small>
-      </footer>
-
-      {/* ================= FLOATING WHATSAPP ================= */}
-
-      <a
-        href="https://wa.me/919119711375"
-        target="_blank"
-        rel="noreferrer"
-        className="floating-whatsapp"
-      >
-        💬
-      </a>
-
-      {/* ================= CREATE ACCOUNT MODAL ================= */}
-      {showAccount && (
-        <div className="account-overlay" onClick={() => setShowAccount(false)}>
-          <div
-            className="account-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="account-close"
-              onClick={() => setShowAccount(false)}
-              aria-label="Close"
-            >
-              ×
-            </button>
-
-            <div className="account-header">
-              <span>🙏 SHRI MATHURA</span>
-              <h2>Create Account</h2>
-              <p>Join us and plan your Braj Dham journey.</p>
-            </div>
-
-            <form className="account-form" onSubmit={handleCreateAccount}>
-              <div className="account-grid">
-                <div className="form-group">
-                  <label>Full Name *</label>
-                  <input
-                    name="fullName"
-                    value={account.fullName}
-                    onChange={handleAccountChange}
-                    placeholder="Enter your full name"
-                    required
-                  />
+      <main className="main-content">
+        {/* HOME PAGE */}
+        {currentPage === 'home' && (
+          <div className="page-fade">
+            <section className="hero">
+              <div className="hero-content">
+                <div className="eyebrow">
+                  ✨ SPIRITUAL JOURNEY WITH DIVINE VIBES
+                </div>
+                <h1>
+                  Discover the <span>Divine Beauty</span> of Braj Dham
+                </h1>
+                <p className="hero-description">
+                  Experience Mathura, Vrindavan, and all of India with
+                  comfortable tour packages, car rentals, self-drive cars, and
+                  bike rentals tailored for your peace of mind.
+                </p>
+
+                <div className="hero-price-card">
+                  <div>
+                    <small>3 DAYS TOUR PACKAGE</small>
+                    <strong>₹5,000</strong>
+                    <span>Starting price • Per Person</span>
+                  </div>
+                  <div className="hero-checks">
+                    <span>✓ Hotel Stay</span>
+                    <span>✓ Meals</span>
+                    <span>✓ Travel</span>
+                    <span>✓ Sightseeing</span>
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Mobile Number *</label>
-                  <input
-                    name="mobileNumber"
-                    value={account.mobileNumber}
-                    onChange={handleAccountChange}
-                    placeholder="10-digit mobile number"
-                    inputMode="numeric"
-                    pattern="[6-9][0-9]{9}"
-                    maxLength="10"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Password *</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={account.password}
-                    onChange={handleAccountChange}
-                    placeholder="Minimum 8 characters"
-                    minLength="8"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Age *</label>
-                  <input
-                    type="number"
-                    name="age"
-                    value={account.age}
-                    onChange={handleAccountChange}
-                    placeholder="18+"
-                    min="18"
-                    max="100"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Gender *</label>
-                  <select
-                    name="gender"
-                    value={account.gender}
-                    onChange={handleAccountChange}
-                    required
+                <div className="hero-buttons">
+                  <button
+                    onClick={() => navigateTo('tours')}
+                    className="btn btn-primary"
                   >
-                    <option value="">Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Marital Status *</label>
-                  <select
-                    name="maritalStatus"
-                    value={account.maritalStatus}
-                    onChange={handleAccountChange}
-                    required
+                    Explore Tour Packages <span>→</span>
+                  </button>
+                  <button
+                    onClick={() => navigateTo('booking')}
+                    className="btn btn-outline"
                   >
-                    <option value="Unmarried">Unmarried</option>
-                    <option value="Married">Married</option>
-                  </select>
+                    📅 Advance Booking
+                  </button>
+                  <a
+                    href="https://wa.me/919119711375"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-whatsapp"
+                  >
+                    💬 WhatsApp Chat
+                  </a>
                 </div>
 
-                {account.maritalStatus === 'Married' && (
-                  <>
-                    <div className="form-group">
-                      <label>Spouse Name *</label>
-                      <input
-                        name="spouseName"
-                        value={account.spouseName}
-                        onChange={handleAccountChange}
-                        placeholder="Enter spouse name"
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Marriage Date *</label>
-                      <input
-                        type="date"
-                        name="marriageDate"
-                        value={account.marriageDate}
-                        onChange={handleAccountChange}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="form-group account-full">
-                  <label>City *</label>
-                  <input
-                    name="city"
-                    value={account.city}
-                    onChange={handleAccountChange}
-                    placeholder="Enter your city"
-                    required
-                  />
+                <div className="trust-row">
+                  <span>⭐ 100% Trusted Agency</span>
+                  <span>🛡️ Family Friendly</span>
+                  <span>🇮🇳 All India Service</span>
                 </div>
               </div>
 
-              {accountMessage && (
-                <div className={`account-message ${
-  accountMessage.includes('successfully') ? 'success' : 'error'
-}`}>
-                  {accountMessage}
+              <div className="hero-visual">
+                <div className="poster-frame">
+                  <img
+                    src={poster}
+                    alt="Shri Mathura Tour and Travels poster"
+                  />
+                  <div className="poster-glow" />
+                </div>
+                <div className="hero-floating-card">
+                  <span className="floating-icon">🙏</span>
+                  <div>
+                    <strong>Chalo Braj Dham</strong>
+                    <small>Divine • Peaceful • Memorable</small>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="stats">
+              <div>
+                <b>7+</b>
+                <span>Sacred Destinations</span>
+              </div>
+              <div>
+                <b>3</b>
+                <span>Rental Categories</span>
+              </div>
+              <div>
+                <b>3 Days</b>
+                <span>Signature Tour</span>
+              </div>
+              <div>
+                <b>24/7</b>
+                <span>Customer Support</span>
+              </div>
+            </section>
+
+            <section className="section">
+              <div className="section-heading">
+                <div className="eyebrow">WHY TRAVEL WITH US</div>
+                <h2>
+                  Your Comfort, <em>Our Priority</em>
+                </h2>
+                <p>
+                  We take care of every detail so you can focus completely on
+                  your spiritual journey.
+                </p>
+              </div>
+              <div className="features-grid">
+                {features.map(([icon, title, text]) => (
+                  <article className="feature-card" key={title}>
+                    <div className="feature-icon">{icon}</div>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* TOURS PAGE */}
+        {currentPage === 'tours' && (
+          <div className="page-fade section">
+            <div className="section-heading">
+              <div className="eyebrow">OUR SIGNATURE TOUR</div>
+              <h2>
+                3 Days Mathura – Vrindavan <em>Spiritual Tour</em>
+              </h2>
+              <p>
+                Immerse yourself in the divine aura and rich heritage of Braj
+                Dham.
+              </p>
+            </div>
+
+            <div className="package-card">
+              <div className="package-copy">
+                <div className="pill">
+                  3 DAYS • MATHURA – VRINDAVAN – BARSANA
+                </div>
+                <h3>
+                  Complete Braj Dham <em>Experience</em>
+                </h3>
+                <p>
+                  Explore Mathura Janmabhoomi, Banke Bihari, Prem Mandir, Gokul,
+                  Govardhan, and Barsana with effortless logistics and
+                  comfortable travel.
+                </p>
+                <div className="package-price">
+                  <span>Special package starting from</span>
+                  <b>₹5,000</b>
+                  <small>Per Person</small>
+                </div>
+                <div className="included-list">
+                  <span>✓ Comfortable Hotel Stay</span>
+                  <span>✓ Hygienic Meals</span>
+                  <span>✓ Safe AC/Non-AC Travel</span>
+                  <span>✓ Dedicated Temple Darshan</span>
+                  <span>✓ Expert Local Guide</span>
+                  <span>✓ Family & Group Friendly</span>
+                </div>
+                <div className="package-actions">
+                  <button
+                    onClick={() => navigateTo('booking')}
+                    className="btn btn-primary"
+                  >
+                    📅 Book This Tour
+                  </button>
+                  <a
+                    href="https://wa.me/919119711375"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-whatsapp"
+                  >
+                    💬 Enquire on WhatsApp
+                  </a>
+                </div>
+              </div>
+              <div className="itinerary">
+                <div className="itinerary-title">YOUR ITINERARY OVERVIEW</div>
+                <div className="timeline-item">
+                  <span>01</span>
+                  <div>
+                    <b>Mathura Day</b>
+                    <p>
+                      Shri Krishna Janmabhoomi, Dwarkadhish Temple & Yamuna
+                      Ghats
+                    </p>
+                  </div>
+                </div>
+                <div className="timeline-item">
+                  <span>02</span>
+                  <div>
+                    <b>Vrindavan Day</b>
+                    <p>Banke Bihari Mandir, Prem Mandir, ISKCON & Nidhivan</p>
+                  </div>
+                </div>
+                <div className="timeline-item">
+                  <span>03</span>
+                  <div>
+                    <b>Braj Circuit</b>
+                    <p>
+                      Gokul childhood sites, Govardhan Parvat & Barsana Radha
+                      Rani Temple
+                    </p>
+                  </div>
+                </div>
+                <div className="mini-note">
+                  🙏 Customizable itineraries available upon request for
+                  families & groups.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RENTALS PAGE */}
+        {currentPage === 'rentals' && (
+          <div className="page-fade section">
+            <div className="section-heading">
+              <div className="eyebrow">FLEXIBLE TRANSPORTATION</div>
+              <h2>
+                Rent. Ride. <em>Explore India.</em>
+              </h2>
+              <p>
+                Choose clean, reliable vehicles for your local sightseeing or
+                pan-India journeys.
+              </p>
+            </div>
+            <div className="rental-grid">
+              {rentals.map((rental) => (
+                <article
+                  className={`rental-card ${rental.featured ? 'featured' : ''}`}
+                  key={rental.title}
+                >
+                  {rental.featured && (
+                    <div className="popular">⭐ MOST POPULAR</div>
+                  )}
+                  <div className="service-icon">{rental.icon}</div>
+                  <div className="service-label">{rental.label}</div>
+                  <h3>{rental.title}</h3>
+                  <p>{rental.text}</p>
+                  <ul>
+                    {rental.points.map((p) => (
+                      <li key={p}>✓ {p}</li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => navigateTo('booking')}
+                    className="service-button"
+                  >
+                    Book Advance Ride →
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* DESTINATIONS PAGE */}
+        {currentPage === 'destinations' && (
+          <div className="page-fade section">
+            <div className="section-heading">
+              <div className="eyebrow">SACRED SITES</div>
+              <h2>
+                Places You Will <em>Explore</em>
+              </h2>
+              <p>Discover the divine landmarks of Braj Dham with us.</p>
+            </div>
+            <div className="destination-grid">
+              {destinations.map(([icon, name, text]) => (
+                <article className="destination-card" key={name}>
+                  <div className="destination-icon">{icon}</div>
+                  <h3>{name}</h3>
+                  <p>{text}</p>
+                  <button
+                    onClick={() => navigateTo('booking')}
+                    className="destination-link-btn"
+                  >
+                    Book Visit <span>→</span>
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ADVANCE BOOKING PAGE */}
+        {currentPage === 'booking' && (
+          <div className="page-fade section">
+            <div className="section-heading">
+              <div className="eyebrow">RESERVE IN ADVANCE</div>
+              <h2>
+                Online <em>Advance Booking</em>
+              </h2>
+              <p>
+                Secure your tour package or vehicle rental ahead of time for a
+                seamless journey.
+              </p>
+            </div>
+            <div className="booking-card-wrapper">
+              {!bookingSubmitted ? (
+                <form className="booking-form" onSubmit={handleBookingSubmit}>
+                  <div className="form-grid">
+                    <label>
+                      Full Name *
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={bookingForm.fullName}
+                        onChange={handleBookingChange}
+                        placeholder="Enter your full name"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Mobile Number (WhatsApp) *
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={bookingForm.phone}
+                        onChange={handleBookingChange}
+                        placeholder="10-digit mobile number"
+                        pattern="[6-9][0-9]{9}"
+                        maxLength="10"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Select Service *
+                      <select
+                        name="serviceType"
+                        value={bookingForm.serviceType}
+                        onChange={handleBookingChange}
+                        required
+                      >
+                        <option>
+                          Tour Package (3 Days Braj Dham - ₹5,000)
+                        </option>
+                        <option>Car Rental with Driver</option>
+                        <option>Self Drive Car Rental</option>
+                        <option>Bike Rental</option>
+                        <option>Custom Tour / Outstation Cab</option>
+                      </select>
+                    </label>
+                    <label>
+                      Travel / Booking Date *
+                      <input
+                        type="date"
+                        name="travelDate"
+                        value={bookingForm.travelDate}
+                        onChange={handleBookingChange}
+                        required
+                      />
+                    </label>
+                    <label className="form-full">
+                      Pickup Location / City *
+                      <input
+                        type="text"
+                        name="pickupLocation"
+                        value={bookingForm.pickupLocation}
+                        onChange={handleBookingChange}
+                        placeholder="e.g., Mathura Railway Station, Hotel"
+                        required
+                      />
+                    </label>
+                    <label className="form-full">
+                      Special Requests / Notes (Optional)
+                      <textarea
+                        name="notes"
+                        value={bookingForm.notes}
+                        onChange={handleBookingChange}
+                        rows="3"
+                        placeholder="Mention any specific requirements..."
+                      ></textarea>
+                    </label>
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary booking-submit-btn"
+                  >
+                    Confirm Advance Booking 🚀
+                  </button>
+                </form>
+              ) : (
+                <div className="booking-success-box">
+                  <div className="success-icon">🎉</div>
+                  <h3>Booking Request Saved to Database!</h3>
+                  <p>
+                    Thank you, <strong>{bookingForm.fullName}</strong>. Your
+                    booking for <strong>{bookingForm.serviceType}</strong> is
+                    confirmed.
+                  </p>
+                  <button
+                    onClick={() => setBookingSubmitted(false)}
+                    className="btn btn-outline"
+                    style={{ marginTop: '20px' }}
+                  >
+                    Make Another Booking
+                  </button>
                 </div>
               )}
-
-              <button
-                type="submit"
-                className="account-submit"
-                disabled={accountLoading}
-              >
-                {accountLoading ? 'Creating Account...' : 'Create Account'}
-              </button>
-            </form>
+            </div>
           </div>
+        )}
+
+        {/* CONTACT PAGE */}
+        {currentPage === 'contact' && (
+          <div className="page-fade section">
+            <div className="contact-card page-contact">
+              <div>
+                <div className="eyebrow">GET IN TOUCH</div>
+                <h2>
+                  Shri Mathura
+                  <br />
+                  Tour & Travels
+                </h2>
+                <p>Your Trust • Our Respect</p>
+              </div>
+              <div className="contact-details">
+                <a href="tel:+919119711375">
+                  📞 <strong>+91 91197-11375</strong>
+                </a>
+                <p>
+                  📍 57, Hanuman Nagar,
+                  <br />
+                  Dholi Pyau, Mathura (U.P.)
+                </p>
+              </div>
+              <div className="contact-actions">
+                <a className="btn btn-primary" href="tel:+919119711375">
+                  Call Now
+                </a>
+                <a
+                  className="btn btn-whatsapp"
+                  href="https://wa.me/919119711375"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  WhatsApp Us
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer>
+        <div className="footer-main">
+          <div className="footer-brand">🛕 Shri Mathura Tour & Travels</div>
+          <p>Your Trust • Our Respect</p>
         </div>
-      )}
+        <div className="footer-links">
+          <button onClick={() => navigateTo('home')}>Home</button>
+          <button onClick={() => navigateTo('tours')}>Tours</button>
+          <button onClick={() => navigateTo('rentals')}>Rentals</button>
+          <button onClick={() => navigateTo('destinations')}>Places</button>
+          <button onClick={() => navigateTo('booking')}>Advance Booking</button>
+          <button onClick={() => navigateTo('contact')}>Contact</button>
+        </div>
+        <small>© 2026 Shri Mathura Tour & Travels • All Rights Reserved</small>
+      </footer>
+
+      {/* Floating WhatsApp */}
+      <a
+        className="floating-whatsapp"
+        href="https://wa.me/919119711375"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Chat on WhatsApp"
+      >
+        💬
+      </a>
     </div>
   );
 }
 
 export default App;
-
