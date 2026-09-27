@@ -17,6 +17,7 @@ app.use(express.json());
 // ===============================
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -32,7 +33,7 @@ db.connect((err) => {
     console.error('----------------------------------------');
     console.error(err.message);
     console.error('----------------------------------------');
-    console.error('⚠️ Check MySQL username, password and database name.');
+    console.error('⚠️ Check MySQL host, port, username, password and database name.');
     console.error('');
     return;
   }
@@ -40,7 +41,9 @@ db.connect((err) => {
   console.log('');
   console.log('========================================');
   console.log('✅ Connected to MySQL Database');
-  console.log('📦 Database: shri_mathura');
+  console.log(`📦 Database: ${process.env.DB_NAME}`);
+  console.log(`🌐 Host: ${process.env.DB_HOST}`);
+  console.log(`🔌 Port: ${process.env.DB_PORT}`);
   console.log('========================================');
   console.log('');
 });
@@ -79,31 +82,31 @@ app.post('/api/signup', (req, res) => {
   `;
 
   db.query(
-    query,
-    [cleanName, cleanEmail, password, cleanPhone],
-    (err, result) => {
-      if (err) {
-        console.error('❌ Signup error:', err);
+      query,
+      [cleanName, cleanEmail, password, cleanPhone],
+      (err, result) => {
+        if (err) {
+          console.error('❌ Signup error:', err);
 
-        if (err.code === 'ER_DUP_ENTRY') {
-          return res.status(400).json({
+          if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({
+              success: false,
+              message: 'This email is already registered. Please login.',
+            });
+          }
+
+          return res.status(500).json({
             success: false,
-            message: 'This email is already registered. Please login.',
+            message: 'Database error while creating account.',
           });
         }
 
-        return res.status(500).json({
-          success: false,
-          message: 'Database error while creating account.',
+        return res.status(201).json({
+          success: true,
+          message: 'Account created successfully!',
+          userId: result.insertId,
         });
       }
-
-      return res.status(201).json({
-        success: true,
-        message: 'Account created successfully!',
-        userId: result.insertId,
-      });
-    },
   );
 });
 
@@ -188,31 +191,31 @@ app.post('/api/bookings', (req, res) => {
   `;
 
   db.query(
-    query,
-    [
-      fullName.trim(),
-      phone.trim(),
-      serviceType,
-      travelDate,
-      pickupLocation.trim(),
-      notes ? notes.trim() : null,
-    ],
-    (err, result) => {
-      if (err) {
-        console.error('❌ Booking error:', err);
+      query,
+      [
+        fullName.trim(),
+        phone.trim(),
+        serviceType,
+        travelDate,
+        pickupLocation.trim(),
+        notes ? notes.trim() : null,
+      ],
+      (err, result) => {
+        if (err) {
+          console.error('❌ Booking error:', err);
 
-        return res.status(500).json({
-          success: false,
-          message: 'Database error while saving booking.',
+          return res.status(500).json({
+            success: false,
+            message: 'Database error while saving booking.',
+          });
+        }
+
+        return res.status(201).json({
+          success: true,
+          message: 'Booking saved successfully!',
+          bookingId: result.insertId,
         });
       }
-
-      return res.status(201).json({
-        success: true,
-        message: 'Booking saved successfully!',
-        bookingId: result.insertId,
-      });
-    },
   );
 });
 
@@ -227,8 +230,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('🚩 Shri Mathura Tour & Travels Backend');
   console.log('========================================');
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🔗 Local:   http://localhost:${PORT}/api/test`);
-  console.log(`🌐 Network: http://192.168.1.4:${PORT}/api/test`);
+  console.log(`🔗 Local: http://localhost:${PORT}/api/test`);
   console.log('========================================');
   console.log('');
 });
